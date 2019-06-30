@@ -7,8 +7,8 @@ use std::ptr;
 
 mod libclang;
 
-pub fn parseTranslationUnit<F: AsRef<Path>>(source_file_path: F) -> Result<(), ()> {
-    let mut index = Index::from_ptr(unsafe { clang_sys::clang_createIndex(0, 0) })?;
+pub fn parse_translation_unit<F: AsRef<Path>>(source_file_path: F) -> Result<(), ()> {
+    let index = Index::from_ptr(unsafe { clang_sys::clang_createIndex(0, 0) })?;
 
     let file = CString::new(
         source_file_path
@@ -20,7 +20,7 @@ pub fn parseTranslationUnit<F: AsRef<Path>>(source_file_path: F) -> Result<(), (
     )
     .or(Err(()))?;
 
-    let tu = TranslationUnit::from_ptr(unsafe {
+    let _tu = TranslationUnit::from_ptr(unsafe {
         clang_sys::clang_parseTranslationUnit(
             index.ptr,
             file.as_ptr(),
@@ -38,7 +38,7 @@ pub fn parseTranslationUnit<F: AsRef<Path>>(source_file_path: F) -> Result<(), (
 fn main() {
     let ast_file = env::args().nth(1).expect("1 argument 'ast file' required");
 
-    match parseTranslationUnit(ast_file) {
+    match parse_translation_unit(ast_file) {
         Ok(_) => (),
         Err(_) => {
             eprintln!("Error");

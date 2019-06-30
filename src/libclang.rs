@@ -11,6 +11,7 @@ static AVAILABLE: AtomicBool = AtomicBool::new(true);
 pub struct Clang;
 
 impl Clang {
+    #[allow(dead_code)]
     pub fn new() -> Result<Clang, ()> {
         if AVAILABLE.swap(false, Ordering::SeqCst) {
             Ok(Self)
