@@ -1,36 +1,20 @@
-use crate::libclang::{Index, TranslationUnit};
 use core::result::Result;
 use std::env;
-use std::ffi::CString;
-use std::path::Path;
-use std::ptr;
 
-mod libclang;
+use clang::{Clang, EntityVisitResult, Index, TranslationUnit};
 
-pub fn parse_translation_unit<F: AsRef<Path>>(source_file_path: F) -> Result<(), ()> {
-    let index = Index::from_ptr(unsafe { clang_sys::clang_createIndex(0, 0) })?;
+pub fn parse_translation_unit(source_file_path: String) -> Result<(), ()> {
+    let clang = Clang::new().unwrap();
+    let index = Index::new(&clang, false, false);
 
-    let file = CString::new(
-        source_file_path
-            .as_ref()
-            .as_os_str()
-            .to_os_string()
-            .to_str()
-            .ok_or(())?,
-    )
-    .or(Err(()))?;
+    let parser = index.parser(source_file_path);
+    let tu: TranslationUnit = parser.parse().or(Err(()))?;
+    let entity = tu.get_entity();
 
-    let _tu = TranslationUnit::from_ptr(unsafe {
-        clang_sys::clang_parseTranslationUnit(
-            index.ptr,
-            file.as_ptr(),
-            ptr::null_mut(),
-            0,
-            ptr::null_mut(),
-            0,
-            0,
-        )
-    })?;
+    entity.visit_children(|_c, parent| {
+        println!("{:?}", parent.get_kind());
+        EntityVisitResult::Recurse
+    });
 
     Ok(())
 }
