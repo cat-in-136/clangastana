@@ -1,7 +1,7 @@
 use core::result::Result;
 use std::env;
 
-use clang::{Clang, EntityVisitResult, Index, TranslationUnit};
+use clang::{Clang, Entity, EntityVisitResult, Index, TranslationUnit};
 
 pub fn parse_translation_unit(source_file_path: String) -> Result<(), ()> {
     let clang = Clang::new().unwrap();
@@ -11,10 +11,15 @@ pub fn parse_translation_unit(source_file_path: String) -> Result<(), ()> {
     let tu: TranslationUnit = parser.parse().or(Err(()))?;
     let entity = tu.get_entity();
 
-    entity.visit_children(|_c, parent| {
-        println!("{:?}", parent.get_kind());
-        EntityVisitResult::Recurse
-    });
+    fn walk_through(current: Entity, parent: Entity) -> EntityVisitResult {
+        println!("current:{:?}, parent:{:?}", current, parent);
+
+        current.visit_children(&walk_through);
+
+        EntityVisitResult::Continue
+    }
+
+    entity.visit_children(&walk_through);
 
     Ok(())
 }
