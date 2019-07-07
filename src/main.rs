@@ -65,13 +65,26 @@ pub fn parse_translation_unit(source_file_path: String) -> Result<(), AstXmlErro
 
     let parser = index.parser(source_file_path);
     let tu: TranslationUnit = parser.parse().or_else(|e| Err(AstXmlError::Clang(e)))?;
-    let entity = tu.get_entity();
+    let root_entity = tu.get_entity();
 
+    let mut breadcrumbs = vec![root_entity];
     let mut error = Ok(());
-    create_start_xml_event_from_entry(entity, &mut writer)?;
-    entity.visit_children(|current, _parent| {
+    create_start_xml_event_from_entry(root_entity, &mut writer)?;
+    root_entity.visit_children(|current, parent| {
+        loop {
+            let crumb_tail = breadcrumbs.pop().unwrap();
+            if crumb_tail == parent {
+                breadcrumbs.push(crumb_tail);
+                break;
+            } else {
+                if let Err(e) = create_end_xml_event_from_entry(&mut writer) {
+                    error = Err(e);
+                    return EntityVisitResult::Break;
+                }
+            }
+        }
+        breadcrumbs.push(current);
         create_start_xml_event_from_entry(current, &mut writer)
-            .and_then(|_| create_end_xml_event_from_entry(&mut writer))
             .and(Ok(EntityVisitResult::Recurse))
             .or_else(|e| -> Result<EntityVisitResult, XmlError> {
                 error = Err(e);
@@ -80,7 +93,9 @@ pub fn parse_translation_unit(source_file_path: String) -> Result<(), AstXmlErro
             .unwrap()
     });
     error?;
-    create_end_xml_event_from_entry(&mut writer)?;
+    while let Some(_entity) = breadcrumbs.pop() {
+        create_end_xml_event_from_entry(&mut writer)?;
+    }
 
     Ok(())
 }
