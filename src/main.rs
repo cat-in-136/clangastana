@@ -63,6 +63,7 @@ pub fn create_start_xml_event_from_entry<W: Write>(
             ))
         })
         .unwrap_or_default();
+    let display_name = entry.get_display_name().unwrap_or_default();
 
     let mut elem = XmlEvent::start_element(kind.as_str());
     if !usr.is_empty() {
@@ -70,6 +71,9 @@ pub fn create_start_xml_event_from_entry<W: Write>(
     }
     if !src.is_empty() {
         elem = elem.attr("src", src.as_str());
+    }
+    if !display_name.is_empty() {
+        elem = elem.attr("display_name", display_name.as_str());
     }
 
     writer.write(XmlEvent::from(elem))
