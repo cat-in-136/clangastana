@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 clang-sys = "0.28.0"
 clang = "0.22.0"
+xml-rs = "0.8.0"
