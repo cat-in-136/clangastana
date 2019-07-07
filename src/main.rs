@@ -70,16 +70,14 @@ pub fn parse_translation_unit(source_file_path: String) -> Result<(), AstXmlErro
     let mut error = Ok(());
     create_start_xml_event_from_entry(entity, &mut writer)?;
     entity.visit_children(|current, _parent| {
-        (|| -> Result<EntityVisitResult, AstXmlError> {
-            create_start_xml_event_from_entry(current, &mut writer)?;
-            create_end_xml_event_from_entry(&mut writer)?;
-            Ok(EntityVisitResult::Recurse)
-        })()
-        .or_else(|e: AstXmlError| -> Result<EntityVisitResult, AstXmlError> {
-            error = Err(e);
-            Ok(EntityVisitResult::Break)
-        })
-        .unwrap()
+        create_start_xml_event_from_entry(current, &mut writer)
+            .and_then(|_| create_end_xml_event_from_entry(&mut writer))
+            .and(Ok(EntityVisitResult::Recurse))
+            .or_else(|e| -> Result<EntityVisitResult, XmlError> {
+                error = Err(e);
+                Ok(EntityVisitResult::Break)
+            })
+            .unwrap()
     });
     error?;
     create_end_xml_event_from_entry(&mut writer)?;
