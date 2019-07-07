@@ -44,7 +44,27 @@ pub fn create_start_xml_event_from_entry<W: Write>(
     writer: &mut EventWriter<W>,
 ) -> Result<(), XmlError> {
     let kind = format!("{:?}", entry.get_kind());
-    let elem = XmlEvent::start_element(kind.as_str());
+    let src = entry
+        .get_location()
+        .and_then(|src_loc| Some(src_loc.get_spelling_location()))
+        .and_then(|loc| {
+            Some(format!(
+                "{}:{}:{}:{}",
+                loc.file
+                    .and_then(|f| f.get_path().into_os_string().into_string().ok())
+                    .unwrap_or_default(),
+                loc.line,
+                loc.column,
+                loc.offset
+            ))
+        })
+        .unwrap_or_default();
+
+    let mut elem = XmlEvent::start_element(kind.as_str());
+    if !src.is_empty() {
+        elem = elem.attr("src", src.as_str());
+    }
+
     writer.write(XmlEvent::from(elem))
 }
 
