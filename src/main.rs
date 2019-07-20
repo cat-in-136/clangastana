@@ -1,14 +1,17 @@
 use core::result::Result;
-use std::env;
 
 use clang::SourceError;
 use clang::{Clang, Entity, EntityVisitResult, Index, TranslationUnit};
+use clap::{App, AppSettings, Arg};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use xml::writer::Error as XmlError;
 use xml::writer::XmlEvent;
 use xml::{EmitterConfig, EventWriter};
+
+#[macro_use]
+extern crate clap;
 
 #[derive(Debug)]
 pub enum AstXmlError {
@@ -86,7 +89,10 @@ pub fn create_end_xml_event_from_entry<W: Write>(
     writer.write(XmlEvent::from(elem))
 }
 
-pub fn parse_translation_unit(source_file_path: String) -> Result<(), AstXmlError> {
+pub fn parse_translation_unit(
+    source_file_path: &str,
+    arguments: &[&str],
+) -> Result<(), AstXmlError> {
     let mut writer = EmitterConfig::new()
         .perform_indent(true)
         .create_writer(std::io::stdout());
@@ -94,8 +100,11 @@ pub fn parse_translation_unit(source_file_path: String) -> Result<(), AstXmlErro
     let clang = Clang::new().unwrap();
     let index = Index::new(&clang, false, false);
 
-    let parser = index.parser(source_file_path);
-    let tu: TranslationUnit = parser.parse().or_else(|e| Err(AstXmlError::Clang(e)))?;
+    let tu: TranslationUnit = {
+        let mut parser = index.parser(source_file_path);
+        parser.arguments(arguments);
+        parser.parse().or_else(|e| Err(AstXmlError::Clang(e)))?
+    };
     let root_entity = tu.get_entity();
 
     let mut breadcrumbs = vec![root_entity];
@@ -133,9 +142,30 @@ pub fn parse_translation_unit(source_file_path: String) -> Result<(), AstXmlErro
 }
 
 fn main() {
-    let ast_file = env::args().nth(1).expect("1 argument 'ast file' required");
+    let matches = (app_from_crate!() as App)
+        .setting(AppSettings::TrailingVarArg)
+        //        .arg(
+        //            Arg::with_name("output")
+        //                .short("o")
+        //                .long("output")
+        //                .value_name("OUTPUT")
+        //                .help("Sets the XML output file")
+        //                .takes_value(true),
+        //        )
+        .arg(
+            Arg::with_name("INPUT")
+                .help("input file (source file) and trailing compiler arguments")
+                .required(true)
+                .multiple(true),
+        )
+        .get_matches();
 
-    match parse_translation_unit(ast_file) {
+    let mut input = matches.values_of("INPUT").unwrap().collect::<Vec<_>>();
+    let source_file_path = input.pop().unwrap();
+    let arguments = &input[..];
+    //let output = matches.value_of("OUTPUT");
+
+    match parse_translation_unit(source_file_path, arguments) {
         Ok(_) => (),
         Err(_) => {
             eprintln!("Error");

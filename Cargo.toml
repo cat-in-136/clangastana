@@ -2,9 +2,11 @@
 name = "astxml"
 version = "0.1.0"
 authors = ["cat-in-136"]
+description = "output llvm ast in xml format keeping the tree structure."
 edition = "2018"
 
 [dependencies]
 clang-sys = "0.28.0"
 clang = "0.22.0"
 xml-rs = "0.8.0"
+clap = "2.33.0"
