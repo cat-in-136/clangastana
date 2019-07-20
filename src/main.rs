@@ -2,7 +2,6 @@ use core::result::Result;
 
 use clang::SourceError;
 use clang::{Clang, Entity, EntityVisitResult, Index, TranslationUnit};
-use clap::{App, AppSettings, Arg};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
@@ -11,9 +10,6 @@ use std::io::{BufWriter, Write};
 use xml::writer::Error as XmlError;
 use xml::writer::XmlEvent;
 use xml::{EmitterConfig, EventWriter};
-
-#[macro_use]
-extern crate clap;
 
 #[derive(Debug)]
 pub enum AstXmlError {
@@ -138,9 +134,9 @@ fn parse_translation_unit<W: Write>(
 }
 
 pub fn process_astxml(
-    source_file_path: &str,
-    arguments: &[&str],
-    output_file_path: Option<&str>,
+    source_file_path: String,
+    arguments: &[String],
+    output_file_path: Option<String>,
 ) -> Result<(), AstXmlError> {
     let clang = Clang::new().unwrap();
     let index = Index::new(&clang, false, false);
@@ -163,27 +159,46 @@ pub fn process_astxml(
 }
 
 fn main() {
-    let matches = (app_from_crate!() as App)
-        .setting(AppSettings::TrailingVarArg)
-        .arg(
-            Arg::with_name("OUTPUT")
-                .short("o")
-                .long("output")
-                .help("Sets the XML output file")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("INPUT")
-                .help("input file (source file) and trailing compiler arguments")
-                .required(true)
-                .multiple(true),
-        )
-        .get_matches();
+    let mut args = std::env::args().into_iter();
+    let program_name = args.next().unwrap();
+    let mut arguments = Vec::with_capacity(std::env::args().len());
+    let mut output = None;
+    let mut input = None;
+    while let Some(v) = args.next() {
+        if v.eq(&"-o".to_string()) {
+            output = Some(
+                args.next()
+                    .expect("Error: Output file not specified")
+                    .clone(),
+            );
+        } else if v.eq(&"-h".to_string()) || v.eq(&"--help".to_string()) {
+            println!(
+                r#"{}.
 
-    let output = matches.value_of("OUTPUT");
-    let mut input = matches.values_of("INPUT").unwrap().collect::<Vec<_>>();
-    let source_file_path = input.pop().unwrap();
-    let arguments = &input[..];
+USAGE:
+    {} [OPTIONS] <INPUT>...
+
+FLAGS:
+    -h, --help       Prints help information
+
+OPTIONS:
+    -o, --output <OUTPUT>    Sets the XML output file
+
+ARGS:
+    <INPUT>...    input file (source file) and trailing compiler arguments
+"#,
+                env!("CARGO_PKG_DESCRIPTION"),
+                program_name
+            );
+            std::process::exit(1);
+        } else if input.is_none() && !v.starts_with("-") {
+            input = Some(v);
+        } else {
+            arguments.push(v);
+        }
+    }
+    let source_file_path = input.expect("Error: input file not specified").clone();
+    let arguments = arguments.as_slice();
 
     match process_astxml(source_file_path, arguments, output) {
         Ok(_) => (),
