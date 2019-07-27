@@ -35,6 +35,10 @@ fn create_start_xml_event_from_entry<W: Write>(
             ))
         })
         .unwrap_or_default();
+    let module = entry
+        .get_module()
+        .and_then(|m| Some(m.get_full_name()))
+        .unwrap_or_default();
     let (type_kind, type_display_name) = entry
         .get_type()
         .and_then(|t| {
@@ -57,6 +61,9 @@ fn create_start_xml_event_from_entry<W: Write>(
     }
     if !src.is_empty() {
         elem = elem.attr("src", src.as_str());
+    }
+    if !module.is_empty() {
+        elem = elem.attr("module", module.as_str());
     }
     if !type_kind.is_empty() {
         elem = elem.attr("type_kind", type_kind.as_str());
