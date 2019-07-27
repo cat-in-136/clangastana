@@ -201,13 +201,19 @@ ARGS:
             arguments.push(v);
         }
     }
+    let output_is_stdout = output.is_none();
     let source_file_path = input.expect("Error: input file not specified").clone();
     let arguments = arguments.as_slice();
 
     match process_astxml(source_file_path, arguments, output) {
-        Ok(_) => (),
-        Err(_) => {
-            eprintln!("Error");
+        Ok(_) => {
+            if output_is_stdout {
+                println!();
+            }
+        }
+        Err(e) => {
+            eprintln!("Error: {:?}", e);
+            std::process::exit(1);
         }
     }
 }
