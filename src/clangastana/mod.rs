@@ -1,5 +1,6 @@
 use clang::{Clang, Entity, EntityVisitResult, Index, TranslationUnit};
 use core::result::Result;
+use failure::Error;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use xml::writer::Error as XmlError;
@@ -8,7 +9,7 @@ use xml::{EmitterConfig, EventWriter};
 
 pub mod error;
 
-use error::AstXmlError;
+use error::AstFileLoadError;
 
 fn create_start_xml_event_from_entry<W: Write>(
     entry: Entity,
@@ -58,7 +59,7 @@ fn create_end_xml_event_from_entry<W: Write>(writer: &mut EventWriter<W>) -> Res
 pub fn parse_translation_unit<W: Write>(
     tu: TranslationUnit,
     mut writer: &mut EventWriter<W>,
-) -> Result<(), AstXmlError> {
+) -> Result<(), Error> {
     let root_entity = tu.get_entity();
 
     let mut breadcrumbs = vec![root_entity];
@@ -99,16 +100,16 @@ pub fn process_astxml(
     source_file_path: String,
     arguments: &[String],
     output_file_path: Option<String>,
-) -> Result<(), AstXmlError> {
+) -> Result<(), Error> {
     let clang = Clang::new().unwrap();
     let index = Index::new(&clang, false, false);
     let tu: TranslationUnit = if source_file_path.ends_with(".ast") {
         TranslationUnit::from_ast(&index, source_file_path.clone())
-            .or(Err(AstXmlError::AstLoad(source_file_path.clone())))?
+            .or(Err(AstFileLoadError::new(source_file_path.clone())))?
     } else {
         let mut parser = index.parser(source_file_path);
         parser.arguments(arguments);
-        parser.parse().or_else(|e| Err(AstXmlError::Clang(e)))?
+        parser.parse()?
     };
 
     let output = if let Some(path) = output_file_path {

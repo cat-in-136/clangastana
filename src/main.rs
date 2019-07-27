@@ -1,4 +1,6 @@
 mod clangastana;
+#[macro_use]
+extern crate failure;
 
 fn main() {
     let mut args = std::env::args().into_iter();
@@ -51,7 +53,7 @@ ARGS:
             }
         }
         Err(e) => {
-            eprintln!("Error: {:?}", e);
+            eprintln!("Error: {}", e);
             std::process::exit(1);
         }
     }
