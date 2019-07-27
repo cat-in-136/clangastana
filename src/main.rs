@@ -1,7 +1,5 @@
+use clang::{Clang, Entity, EntityVisitResult, Index, SourceError, TranslationUnit};
 use core::result::Result;
-
-use clang::SourceError;
-use clang::{Clang, Entity, EntityVisitResult, Index, TranslationUnit};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
@@ -14,6 +12,7 @@ use xml::{EmitterConfig, EventWriter};
 #[derive(Debug)]
 pub enum AstXmlError {
     Clang(SourceError),
+    AstLoad(String),
     Xml(XmlError),
     Io(IoError),
 }
@@ -22,6 +21,7 @@ impl Display for AstXmlError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
             AstXmlError::Clang(e) => write!(f, "${:?}", e),
+            AstXmlError::AstLoad(filepath) => write!(f, "ast file \"{}\" load error", &filepath),
             AstXmlError::Xml(e) => write!(f, "${:?}", e),
             AstXmlError::Io(e) => write!(f, "${:?}", e),
         }
@@ -140,7 +140,10 @@ pub fn process_astxml(
 ) -> Result<(), AstXmlError> {
     let clang = Clang::new().unwrap();
     let index = Index::new(&clang, false, false);
-    let tu: TranslationUnit = {
+    let tu: TranslationUnit = if source_file_path.ends_with(".ast") {
+        TranslationUnit::from_ast(&index, source_file_path.clone())
+            .or(Err(AstXmlError::AstLoad(source_file_path.clone())))?
+    } else {
         let mut parser = index.parser(source_file_path);
         parser.arguments(arguments);
         parser.parse().or_else(|e| Err(AstXmlError::Clang(e)))?
@@ -173,10 +176,11 @@ fn main() {
             );
         } else if v.eq(&"-h".to_string()) || v.eq(&"--help".to_string()) {
             println!(
-                r#"{}.
+                r#"{description}.
 
 USAGE:
-    {} [OPTIONS] <INPUT>...
+    {program_name} [OPTIONS] <INPUT>...
+    {program_name} [OPTIONS] input.ast
 
 FLAGS:
     -h, --help       Prints help information
@@ -187,8 +191,8 @@ OPTIONS:
 ARGS:
     <INPUT>...    input file (source file) and trailing compiler arguments
 "#,
-                env!("CARGO_PKG_DESCRIPTION"),
-                program_name
+                description = env!("CARGO_PKG_DESCRIPTION"),
+                program_name = program_name
             );
             std::process::exit(1);
         } else if input.is_none() && !v.starts_with("-") {
