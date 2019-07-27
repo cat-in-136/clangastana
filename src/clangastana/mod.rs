@@ -11,6 +11,12 @@ pub mod error;
 
 use error::AstFileLoadError;
 
+#[derive(Default, Debug, Clone)]
+pub struct AstXmlOption<'a> {
+    pub arguments: &'a [String],
+    pub skip_function_bodies: bool,
+}
+
 fn create_start_xml_event_from_entry<W: Write>(
     entry: Entity,
     writer: &mut EventWriter<W>,
@@ -131,8 +137,8 @@ pub fn parse_translation_unit<W: Write>(
 
 pub fn process_astxml(
     source_file_path: String,
-    arguments: &[String],
     output_file_path: Option<String>,
+    option: AstXmlOption,
 ) -> Result<(), Error> {
     let clang = Clang::new().unwrap();
     let index = Index::new(&clang, false, false);
@@ -141,7 +147,8 @@ pub fn process_astxml(
             .or(Err(AstFileLoadError::new(source_file_path.clone())))?
     } else {
         let mut parser = index.parser(source_file_path);
-        parser.arguments(arguments);
+        parser.arguments(option.arguments);
+        parser.skip_function_bodies(option.skip_function_bodies);
         parser.parse()?
     };
 
@@ -176,8 +183,8 @@ mod tests {
 
         super::process_astxml(
             String::from(c_file_path.to_str().unwrap()),
-            &["-O".to_string()],
             Some(String::from(xml_file_path.to_str().unwrap())),
+            Default::default(),
         )
         .unwrap();
 
@@ -224,8 +231,8 @@ mod tests {
 
         super::process_astxml(
             String::from(ast_file_path.to_str().unwrap()),
-            &[],
             Some(String::from(xml_file_path.to_str().unwrap())),
+            Default::default(),
         )
         .unwrap();
 
