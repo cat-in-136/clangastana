@@ -1,4 +1,4 @@
-pub mod clangastana;
+mod clangastana;
 
 fn main() {
     let mut args = std::env::args().into_iter();

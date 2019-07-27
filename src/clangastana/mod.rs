@@ -55,7 +55,7 @@ fn create_end_xml_event_from_entry<W: Write>(writer: &mut EventWriter<W>) -> Res
     writer.write(XmlEvent::from(elem))
 }
 
-fn parse_translation_unit<W: Write>(
+pub fn parse_translation_unit<W: Write>(
     tu: TranslationUnit,
     mut writer: &mut EventWriter<W>,
 ) -> Result<(), AstXmlError> {
@@ -121,4 +121,97 @@ pub fn process_astxml(
         .create_writer(BufWriter::new(output));
 
     parse_translation_unit(tu, &mut writer)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs::{read_to_string, File};
+    use std::io::Write;
+    use std::process::Command;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_process_astxml_c_file() {
+        let dir = tempdir().unwrap();
+        let c_file_path = dir.path().join("foo.c");
+        let mut c_file = File::create(c_file_path.clone()).unwrap();
+        let xml_file_path = dir.path().join("foo.xml");
+
+        let c_source = "int main(void) {\n  return 0;\n}\n";
+        c_file.write_all(c_source.as_bytes()).unwrap();
+
+        super::process_astxml(
+            String::from(c_file_path.to_str().unwrap()),
+            &["-O".to_string()],
+            Some(String::from(xml_file_path.to_str().unwrap())),
+        )
+        .unwrap();
+
+        assert_eq!(
+            read_to_string(xml_file_path).unwrap(),
+            format!(
+                r##"<?xml version="1.0" encoding="utf-8"?>
+<TranslationUnit display_name="{c_source}">
+  <FunctionDecl usr="c:@F@main" src="{c_source}:1:5:4" display_name="main()">
+    <CompoundStmt src="{c_source}:1:16:15">
+      <ReturnStmt src="{c_source}:2:3:19">
+        <IntegerLiteral src="{c_source}:2:10:26" />
+      </ReturnStmt>
+    </CompoundStmt>
+  </FunctionDecl>
+</TranslationUnit>"##,
+                c_source = c_file_path.to_str().unwrap()
+            )
+        );
+
+        dir.close().unwrap();
+    }
+
+    #[test]
+    fn test_process_astxml_ast_file() {
+        let dir = tempdir().unwrap();
+        let c_file_path = dir.path().join("foo.c");
+        let mut c_file = File::create(c_file_path.clone()).unwrap();
+        let ast_file_path = dir.path().join("foo.ast");
+        let xml_file_path = dir.path().join("foo.xml");
+
+        let c_source = "int main(void) {\n  return 0;\n}\n";
+        c_file.write_all(c_source.as_bytes()).unwrap();
+
+        Command::new("clang")
+            .args(&[
+                "-o",
+                ast_file_path.to_str().unwrap(),
+                "-emit-ast",
+                c_file_path.to_str().unwrap(),
+            ])
+            .output()
+            .unwrap();
+
+        super::process_astxml(
+            String::from(ast_file_path.to_str().unwrap()),
+            &[],
+            Some(String::from(xml_file_path.to_str().unwrap())),
+        )
+        .unwrap();
+
+        assert_eq!(
+            read_to_string(xml_file_path).unwrap(),
+            format!(
+                r##"<?xml version="1.0" encoding="utf-8"?>
+<TranslationUnit display_name="{c_source}">
+  <FunctionDecl usr="c:@F@main" src="{c_source}:1:5:4" display_name="main()">
+    <CompoundStmt src="{c_source}:1:16:15">
+      <ReturnStmt src="{c_source}:2:3:19">
+        <IntegerLiteral src="{c_source}:2:10:26" />
+      </ReturnStmt>
+    </CompoundStmt>
+  </FunctionDecl>
+</TranslationUnit>"##,
+                c_source = c_file_path.to_str().unwrap()
+            )
+        );
+
+        dir.close().unwrap();
+    }
 }
