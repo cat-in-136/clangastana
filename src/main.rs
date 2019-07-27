@@ -9,6 +9,7 @@ fn main() {
     let program_name = args.next().unwrap();
     let mut arguments = Vec::with_capacity(std::env::args().len());
     let mut skip_function_bodies = false;
+    let mut skip_non_main_file = false;
     let mut output = None;
     let mut input = None;
     while let Some(v) = args.next() {
@@ -20,6 +21,8 @@ fn main() {
             );
         } else if v.eq(&"--skip-function-bodies".to_string()) {
             skip_function_bodies = true;
+        } else if v.eq(&"--skip-non-main-file".to_string()) {
+            skip_non_main_file = true;
         } else if v.eq(&"-h".to_string()) || v.eq(&"--help".to_string()) {
             println!(
                 r#"{description}.
@@ -34,6 +37,7 @@ FLAGS:
 OPTIONS:
     -o, --output <OUTPUT>    Sets the XML output file
     --skip-function-bodies   Skip function and method bodies
+    --skip-non-main-file     Skip non-main file entities
 
 ARGS:
     <INPUT>...    input file (source file) and trailing compiler arguments
@@ -53,6 +57,7 @@ ARGS:
     let option = AstXmlOption {
         arguments: arguments.as_slice(),
         skip_function_bodies,
+        skip_non_main_file,
         ..Default::default()
     };
 

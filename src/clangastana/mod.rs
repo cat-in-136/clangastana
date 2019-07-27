@@ -15,6 +15,7 @@ use error::AstFileLoadError;
 pub struct AstXmlOption<'a> {
     pub arguments: &'a [String],
     pub skip_function_bodies: bool,
+    pub skip_non_main_file: bool,
 }
 
 fn create_start_xml_event_from_entry<W: Write>(
@@ -98,11 +99,15 @@ fn create_end_xml_event_from_entry<W: Write>(writer: &mut EventWriter<W>) -> Res
 pub fn parse_translation_unit<W: Write>(
     tu: TranslationUnit,
     mut writer: &mut EventWriter<W>,
+    option: AstXmlOption,
 ) -> Result<(), Error> {
     let root_entity = tu.get_entity();
 
     let mut breadcrumbs = vec![root_entity];
     let mut error = Ok(());
+
+    let is_skipped = |entity: Entity| (option.skip_non_main_file && !entity.is_in_main_file());
+
     create_start_xml_event_from_entry(root_entity, &mut writer)?;
     root_entity.visit_children(|current, parent| {
         match (|| -> Result<(), XmlError> {
@@ -112,12 +117,16 @@ pub fn parse_translation_unit<W: Write>(
                     breadcrumbs.push(crumb_tail);
                     break;
                 } else {
-                    create_end_xml_event_from_entry(&mut writer)?;
+                    if !is_skipped(crumb_tail) {
+                        create_end_xml_event_from_entry(&mut writer)?;
+                    }
                 }
             }
 
             breadcrumbs.push(current);
-            create_start_xml_event_from_entry(current, &mut writer)?;
+            if !is_skipped(current) {
+                create_start_xml_event_from_entry(current, &mut writer)?;
+            }
             Ok(())
         })() {
             Ok(_) => EntityVisitResult::Recurse,
@@ -161,7 +170,7 @@ pub fn process_astxml(
         .perform_indent(true)
         .create_writer(BufWriter::new(output));
 
-    parse_translation_unit(tu, &mut writer)
+    parse_translation_unit(tu, &mut writer, option)
 }
 
 #[cfg(test)]
