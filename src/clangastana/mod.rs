@@ -42,6 +42,10 @@ fn create_start_xml_event_from_entry<W: Write>(
             ))
         })
         .unwrap_or_default();
+    let linkage = entry
+        .get_linkage()
+        .and_then(|linkage| Some(format!("{:?}", linkage)))
+        .unwrap_or_default();
     let module = entry
         .get_module()
         .and_then(|m| Some(m.get_full_name()))
@@ -73,6 +77,7 @@ fn create_start_xml_event_from_entry<W: Write>(
     }
     add_attr!(usr);
     add_attr!(src);
+    add_attr!(linkage);
     add_attr!(module);
     add_attr!(type_kind);
     add_attr!(type_display_name);
@@ -179,7 +184,7 @@ mod tests {
     fn xml_source(c_file_path: &str) -> String {
         format!(r##"<?xml version="1.0" encoding="utf-8"?>
 <TranslationUnit display_name="{c_source}">
-  <FunctionDecl usr="c:@F@main" src="{c_source}:1:5:4" type_kind="FunctionPrototype" type_display_name="int (void)" display_name="main()">
+  <FunctionDecl usr="c:@F@main" src="{c_source}:1:5:4" linkage="External" type_kind="FunctionPrototype" type_display_name="int (void)" display_name="main()">
     <CompoundStmt src="{c_source}:1:16:15">
       <ReturnStmt src="{c_source}:2:3:19">
         <IntegerLiteral src="{c_source}:2:10:26" type_kind="Int" type_display_name="int" />
