@@ -63,30 +63,22 @@ fn create_start_xml_event_from_entry<W: Write>(
     let display_name = entry.get_display_name().unwrap_or_default();
 
     let mut elem = XmlEvent::start_element(kind.as_str());
-    if !usr.is_empty() {
-        elem = elem.attr("usr", usr.as_str());
+
+    macro_rules! add_attr {
+        ($val: expr) => {
+            if !$val.is_empty() {
+                elem = elem.attr(stringify!($val), $val.as_str());
+            }
+        };
     }
-    if !src.is_empty() {
-        elem = elem.attr("src", src.as_str());
-    }
-    if !module.is_empty() {
-        elem = elem.attr("module", module.as_str());
-    }
-    if !type_kind.is_empty() {
-        elem = elem.attr("type_kind", type_kind.as_str());
-    }
-    if !type_display_name.is_empty() {
-        elem = elem.attr("type_display_name", type_display_name.as_str());
-    }
-    if !enum_constant_value.is_empty() {
-        elem = elem.attr("enum_constant_value", enum_constant_value.as_str());
-    }
-    if !comment.is_empty() {
-        elem = elem.attr("comment", comment.as_str());
-    }
-    if !display_name.is_empty() {
-        elem = elem.attr("display_name", display_name.as_str());
-    }
+    add_attr!(usr);
+    add_attr!(src);
+    add_attr!(module);
+    add_attr!(type_kind);
+    add_attr!(type_display_name);
+    add_attr!(enum_constant_value);
+    add_attr!(comment);
+    add_attr!(display_name);
 
     writer.write(XmlEvent::from(elem))
 }
