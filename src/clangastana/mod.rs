@@ -180,6 +180,23 @@ mod tests {
     use std::process::Command;
     use tempfile::tempdir;
 
+    const C_SOURCE: &'static str = r##"int main(void) {
+  return 0;
+}
+"##;
+    fn xml_source(c_file_path: &str) -> String {
+        format!(r##"<?xml version="1.0" encoding="utf-8"?>
+<TranslationUnit display_name="{c_source}">
+  <FunctionDecl usr="c:@F@main" src="{c_source}:1:5:4" type_kind="FunctionPrototype" type_display_name="int (void)" display_name="main()">
+    <CompoundStmt src="{c_source}:1:16:15">
+      <ReturnStmt src="{c_source}:2:3:19">
+        <IntegerLiteral src="{c_source}:2:10:26" type_kind="Int" type_display_name="int" />
+      </ReturnStmt>
+    </CompoundStmt>
+  </FunctionDecl>
+</TranslationUnit>"##, c_source=c_file_path)
+    }
+
     #[test]
     fn test_process_astxml_c_file() {
         let dir = tempdir().unwrap();
@@ -187,8 +204,7 @@ mod tests {
         let mut c_file = File::create(c_file_path.clone()).unwrap();
         let xml_file_path = dir.path().join("foo.xml");
 
-        let c_source = "int main(void) {\n  return 0;\n}\n";
-        c_file.write_all(c_source.as_bytes()).unwrap();
+        c_file.write_all(C_SOURCE.as_bytes()).unwrap();
 
         super::process_astxml(
             String::from(c_file_path.to_str().unwrap()),
@@ -199,19 +215,7 @@ mod tests {
 
         assert_eq!(
             read_to_string(xml_file_path).unwrap(),
-            format!(
-                r##"<?xml version="1.0" encoding="utf-8"?>
-<TranslationUnit display_name="{c_source}">
-  <FunctionDecl usr="c:@F@main" src="{c_source}:1:5:4" display_name="main()">
-    <CompoundStmt src="{c_source}:1:16:15">
-      <ReturnStmt src="{c_source}:2:3:19">
-        <IntegerLiteral src="{c_source}:2:10:26" />
-      </ReturnStmt>
-    </CompoundStmt>
-  </FunctionDecl>
-</TranslationUnit>"##,
-                c_source = c_file_path.to_str().unwrap()
-            )
+            xml_source(c_file_path.to_str().unwrap())
         );
 
         dir.close().unwrap();
@@ -225,8 +229,7 @@ mod tests {
         let ast_file_path = dir.path().join("foo.ast");
         let xml_file_path = dir.path().join("foo.xml");
 
-        let c_source = "int main(void) {\n  return 0;\n}\n";
-        c_file.write_all(c_source.as_bytes()).unwrap();
+        c_file.write_all(C_SOURCE.as_bytes()).unwrap();
 
         Command::new("clang")
             .args(&[
@@ -247,19 +250,7 @@ mod tests {
 
         assert_eq!(
             read_to_string(xml_file_path).unwrap(),
-            format!(
-                r##"<?xml version="1.0" encoding="utf-8"?>
-<TranslationUnit display_name="{c_source}">
-  <FunctionDecl usr="c:@F@main" src="{c_source}:1:5:4" display_name="main()">
-    <CompoundStmt src="{c_source}:1:16:15">
-      <ReturnStmt src="{c_source}:2:3:19">
-        <IntegerLiteral src="{c_source}:2:10:26" />
-      </ReturnStmt>
-    </CompoundStmt>
-  </FunctionDecl>
-</TranslationUnit>"##,
-                c_source = c_file_path.to_str().unwrap()
-            )
+            xml_source(c_file_path.to_str().unwrap())
         );
 
         dir.close().unwrap();
