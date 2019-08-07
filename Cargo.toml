@@ -3,6 +3,8 @@ name = "clangastana"
 version = "0.1.0"
 authors = ["cat-in-136"]
 description = "output llvm ast in xml format keeping the tree structure."
+license-file = "LICENSE"
+readme = "README.md"
 edition = "2018"
 
 [dependencies]
